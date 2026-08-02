@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B站视频下载</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 头部 -->
+    <div class="header">
+      <span class="logo">📺 B站视频下载</span>
+      <span class="version">v1.0</span>
+    </div>
+
+    <!-- 非视频页面提示 -->
+    <div id="not-video-page" class="state-box hidden">
+      <div class="state-icon">🎬</div>
+      <div class="state-text">请打开一个 B站视频页面</div>
+      <div class="state-sub">支持 bilibili.com/video/ 链接</div>
+    </div>
+
+    <!-- 加载中 -->
+    <div id="loading" class="state-box hidden">
+      <div class="spinner"></div>
+      <div class="state-text">正在获取视频信息...</div>
+      <div class="state-sub">请确保下载服务已启动</div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div id="error-box" class="state-box hidden">
+      <div class="state-icon error-icon">❌</div>
+      <div class="state-text" id="error-text">出错了</div>
+      <button id="retry-btn" class="btn btn-small">重试</button>
+    </div>
+
+    <!-- 视频信息区 -->
+    <div id="video-panel" class="hidden">
+      <div class="video-info">
+        <div class="video-cover-wrapper">
+          <img id="video-cover" src="" alt="封面" class="video-cover">
+        </div>
+        <div class="video-meta">
+          <div class="video-title" id="video-title">-</div>
+          <div class="video-owner" id="video-owner">-</div>
+          <div class="video-duration" id="video-duration">-</div>
+        </div>
+      </div>
+
+      <!-- 分P选择 -->
+      <div class="section">
+        <label class="section-label">分P选择</label>
+        <select id="page-select" class="select">
+          <option value="0">加载中...</option>
+        </select>
+      </div>
+
+      <!-- 画质选择 -->
+      <div class="section">
+        <label class="section-label">画质选择</label>
+        <select id="quality-select" class="select">
+          <option value="0">加载中...</option>
+        </select>
+      </div>
+
+      <!-- 下载模式 -->
+      <div class="section" id="mode-section">
+        <label class="section-label">下载模式</label>
+        <div class="mode-selector">
+          <label class="mode-option active" id="mode-video-label">
+            <input type="radio" name="download-mode" value="video" checked>
+            <span>视频+音频</span>
+          </label>
+          <label class="mode-option" id="mode-audio-label">
+            <input type="radio" name="download-mode" value="audio">
+            <span>仅音频</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 音频格式选择（仅"仅音频"模式显示） -->
+      <div class="section hidden" id="audio-format-section">
+        <label class="section-label">音频格式</label>
+        <div class="mode-selector">
+          <label class="mode-option active" id="fmt-mp3-label">
+            <input type="radio" name="audio-format" value="mp3" checked>
+            <span>MP3</span>
+          </label>
+          <label class="mode-option" id="fmt-flac-label">
+            <input type="radio" name="audio-format" value="flac">
+            <span>FLAC</span>
+          </label>
+          <label class="mode-option" id="fmt-hires-label">
+            <input type="radio" name="audio-format" value="hires">
+            <span>Hi-Res</span>
+          </label>
+        </div>
+        <div class="format-hint" id="format-hint"></div>
+      </div>
+
+      <!-- 下载路径 -->
+      <div class="section">
+        <label class="section-label">保存路径</label>
+        <div class="path-input-wrapper">
+          <input type="text" id="download-path-input" class="path-input" placeholder="G:\bilibili-downloader\downloads\">
+          <button id="select-path-btn" class="btn-icon" title="选择文件夹">📁</button>
+          <button id="reset-path-btn" class="btn-icon" title="恢复默认路径">↺</button>
+        </div>
+        <div class="path-checkbox-row">
+          <input type="checkbox" id="save-path-checkbox">
+          <label for="save-path-checkbox">保存为默认下载路径</label>
+        </div>
+      </div>
+
+      <!-- 弹幕选项 -->
+      <div class="section" id="danmaku-section">
+        <div class="danmaku-row">
+          <input type="checkbox" id="download-danmaku-checkbox">
+          <label for="download-danmaku-checkbox">同时下载弹幕 (XML + JSON + ASS)</label>
+        </div>
+        <div class="danmaku-mode hidden" id="danmaku-mode-selector">
+          <label class="section-label" style="margin-top:6px">弹幕嵌入方式</label>
+          <div class="mode-selector">
+            <label class="mode-option active" id="dm-mode-soft-label">
+              <input type="radio" name="danmaku-mode" value="soft" checked>
+              <span>软封装 MKV</span>
+            </label>
+            <label class="mode-option" id="dm-mode-burn-label">
+              <input type="radio" name="danmaku-mode" value="burn">
+              <span>硬烧录进画面</span>
+            </label>
+          </div>
+          <div class="danmaku-mode-hint" id="danmaku-mode-hint"></div>
+        </div>
+      </div>
+
+      <!-- 服务状态 -->
+      <div id="server-status" class="server-status">
+        <span class="status-dot"></span>
+        <span id="server-status-text">检查服务...</span>
+      </div>
+
+      <!-- 下载按钮 -->
+      <button id="download-btn" class="btn btn-primary" disabled>
+        获取视频信息
+      </button>
+    </div>
+
+    <!-- 下载进度区 -->
+    <div id="progress-panel" class="hidden">
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-text" id="progress-text">准备中...</div>
+      <div class="progress-percent" id="progress-percent">0%</div>
+      <div class="progress-actions">
+        <button id="open-folder-btn" class="btn btn-secondary hidden">📂 打开文件夹</button>
+        <button id="save-btn" class="btn btn-primary hidden">💾 保存到本地</button>
+        <button id="cancel-btn" class="btn btn-secondary hidden">返回</button>
+      </div>
+    </div>
+
+    <!-- 底部 -->
+    <div class="footer">
+      <span class="tip">💡 提示：确保下载服务(端口8765)已启动</span>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
