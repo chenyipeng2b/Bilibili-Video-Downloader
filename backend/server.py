@@ -542,14 +542,19 @@ async def _do_download(task_id: str, req: DownloadRequest):
                         tmp_out = output_path.with_suffix(".tmp.mp4")
                         cmd = [
                             FFMPEG_PATH, "-y",
-                            "-i", str(output_path),
-                            "-attach", str(cover_tmp),
+                            "-i", str(output_path.name),
+                            "-attach", str(cover_tmp.name),
                             "-c", "copy",
                             "-metadata:s:t", "mimetype=image/jpeg",
                             "-movflags", "+faststart",
-                            str(tmp_out),
+                            str(tmp_out.name),
                         ]
-                        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                        proc = await asyncio.create_subprocess_exec(
+                            *cmd,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                            cwd=str(output_dir),
+                        )
                         _, stderr = await proc.communicate()
                         cover_tmp.unlink(missing_ok=True)
 
@@ -558,6 +563,7 @@ async def _do_download(task_id: str, req: DownloadRequest):
                             tmp_out.rename(output_path)
                             task["file_size"] = os.path.getsize(output_path)
                         else:
+                            tmp_out.unlink(missing_ok=True)
                             print(f"[WARN] 封面嵌入失败: {stderr.decode()[:200]}")
                     else:
                         cover_tmp.unlink(missing_ok=True)
