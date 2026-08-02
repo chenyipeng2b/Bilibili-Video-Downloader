@@ -525,14 +525,45 @@ async def _do_download(task_id: str, req: DownloadRequest):
             task["file_path"] = str(output_path)
             task["file_size"] = os.path.getsize(output_path) if output_path.exists() else 0
 
-            # 封面下载
-            if req.cover_url:
+            # 封面嵌入（MP4 内嵌缩略图，资源管理器显示为视频封面）
+            if req.cover_url and output_path.suffix == ".mp4":
                 try:
-                    cover_path = output_path.with_suffix(".jpg")
-                    async with httpx.AsyncClient(timeout=30.0) as cover_client:
-                        await _download_file(cover_client, req.cover_url, cover_path, headers, task, 0, 0)
+                    cover_tmp = output_dir / f"{task_id}_cover.jpg"
+                    async with httpx.AsyncClient(timeout=30.0, headers={
+                        "Referer": "https://www.bilibili.com",
+                        "Origin": "https://www.bilibili.com",
+                        "User-Agent": HEADERS_TEMPLATE.get("User-Agent", ""),
+                    }) as cover_client:
+                        resp = await cover_client.get(req.cover_url)
+                        resp.raise_for_status()
+                        cover_tmp.write_bytes(resp.content)
+
+                    if cover_tmp.stat().st_size > 1024:  # 确保封面 > 1KB
+                        tmp_out = output_path.with_suffix(".tmp.mp4")
+                        cmd = [
+                            FFMPEG_PATH, "-y",
+                            "-i", str(output_path),
+                            "-attach", str(cover_tmp),
+                            "-c", "copy",
+                            "-metadata:s:t", "mimetype=image/jpeg",
+                            "-movflags", "+faststart",
+                            str(tmp_out),
+                        ]
+                        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                        _, stderr = await proc.communicate()
+                        cover_tmp.unlink(missing_ok=True)
+
+                        if proc.returncode == 0 and tmp_out.exists():
+                            output_path.unlink(missing_ok=True)
+                            tmp_out.rename(output_path)
+                            task["file_size"] = os.path.getsize(output_path)
+                        else:
+                            print(f"[WARN] 封面嵌入失败: {stderr.decode()[:200]}")
+                    else:
+                        cover_tmp.unlink(missing_ok=True)
+                        print(f"[WARN] 封面文件太小，跳过嵌入")
                 except Exception as e:
-                    print(f"[WARN] 封面下载失败: {e}")
+                    print(f"[WARN] 封面处理失败: {e}")
 
             # 7. 弹幕保存（可选）
             if req.download_danmaku:
