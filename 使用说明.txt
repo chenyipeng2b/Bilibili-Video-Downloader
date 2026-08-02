@@ -60,3 +60,71 @@
   1. 双击 "启动服务.bat" (会自动装依赖)
   2. 浏览器加载 extension 文件夹
   3. 打开 B站视频页就能用
+
+
+╔══════════════════════════════════════════════════════════╗
+║  English instructions are below / 英文说明在下面         ║
+╚══════════════════════════════════════════════════════════╝
+
+
+========================================
+  Bilibili Video Downloader - User Guide
+========================================
+
+【Prerequisites】
+  - Windows OS
+  - Chrome / Edge browser
+  - Python 3.10+ (https://www.python.org/downloads/)
+    Check "Add Python to PATH" during installation
+
+
+【3-Step Setup】
+
+ Step 1: Double-click "启动服务.bat"
+         - Dependencies auto-install on first run
+         - Keep the window open (service on port 8765)
+
+ Step 2: Load the browser extension
+         Chrome: go to chrome://extensions/
+         Edge:   go to edge://extensions/
+         -> Enable "Developer mode" (top right)
+         -> Click "Load unpacked"
+         -> Select the "extension" folder in this directory
+         -> Extension icon appears in toolbar
+
+ Step 3: Open any Bilibili video page, click the extension icon to download
+
+
+【Features】
+
+  Download Mode
+    [Video+Audio]  Download as MP4/MKV
+    [Audio Only]   MP3 / FLAC / Hi-Res (three options)
+
+  Danmaku (Bullet Comments)
+    [Soft Mux MKV]  Danmaku as subtitle track (needs PotPlayer/VLC)
+    [Hard Burn]     Danmaku burned into video frames (any player)
+                    (slower download, larger file size)
+
+  Quality
+    All 12 quality tiers displayed, login to unlock higher qualities
+
+
+【FAQ】
+
+  Q: Extension shows "Service not started"
+  A: Double-click "启动服务.bat", wait for port 8765
+
+  Q: Higher qualities (4K/1080P60) show lock icon
+  A: Log in to Bilibili first, extension reads your login cookie
+
+  Q: Downloaded MKV has no danmaku
+  A: Right-click -> Subtitles -> Enable track, or use Hard Burn mode
+
+
+【Share with Friends】
+
+  Zip the entire folder and send. They just need to:
+  1. Double-click "启动服务.bat" (auto-installs dependencies)
+  2. Load the "extension" folder in browser
+  3. Open any Bilibili video page
