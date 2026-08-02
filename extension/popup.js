@@ -487,8 +487,6 @@ async function cancelAllTasks() {
   show(els.videoPanel);
   hide(els.progressPanel);
 }
-  }
-}
 
 function resetToPanel() {
   cancelAllTasks();
