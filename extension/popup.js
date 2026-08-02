@@ -491,12 +491,7 @@ async function cancelAllTasks() {
 }
 
 function resetToPanel() {
-  clearInterval(state.pollInterval);
-  state.pollInterval = null;
-  state.downloading = false;
-  hide(els.progressPanel);
-  hide(els.openFolderBtn);
-  loadVideoInfo();
+  cancelAllTasks();
 }
 
 // ==================== 路径管理 ====================
@@ -690,7 +685,6 @@ els.pageSelect.addEventListener('change', () => {
 });
 
 els.retryBtn.addEventListener('click', loadVideoInfo);
-els.cancelBtn.addEventListener('click', resetToPanel);
 
 // 下载路径输入
 els.downloadPathInput.addEventListener('change', () => {
