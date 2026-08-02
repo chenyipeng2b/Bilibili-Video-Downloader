@@ -410,30 +410,32 @@ async def _do_download(task_id: str, req: DownloadRequest):
                 output_filename = f"{safe_title}_audio.{ext}"
                 output_path = output_dir / output_filename
 
-                # 下载音频流
-                task["status"] = "downloading_audio"
-                task["message"] = "正在下载音频流..."
-                task["progress"] = 0.1
-                await _download_file(client, audio_url, audio_tmp, headers, task, 0.1, 0.85)
+                try:
+                    # 下载音频流
+                    task["status"] = "downloading_audio"
+                    task["message"] = "正在下载音频流..."
+                    task["progress"] = 0.1
+                    await _download_file(client, audio_url, audio_tmp, headers, task, 0.1, 0.85)
 
-                # ffmpeg 编码转换
-                task["status"] = "processing"
-                task["message"] = f"正在转换为 {fmt.upper()}..."
-                task["progress"] = 0.85
+                    # ffmpeg 编码转换
+                    task["status"] = "processing"
+                    task["message"] = f"正在转换为 {fmt.upper()}..."
+                    task["progress"] = 0.85
 
-                cmd = [FFMPEG_PATH, "-y", "-i", str(audio_tmp)] + codec_args + [str(output_path)]
-                process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, stderr = await process.communicate()
-                audio_tmp.unlink(missing_ok=True)
+                    cmd = [FFMPEG_PATH, "-y", "-i", str(audio_tmp)] + codec_args + [str(output_path)]
+                    process = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    stdout, stderr = await process.communicate()
 
-                if process.returncode != 0:
-                    err_detail = stderr.decode() if stderr else "无错误输出"
-                    print(f"[ERROR] ffmpeg 转换失败 (fmt={fmt}, rc={process.returncode}): {err_detail[:500]}")
-                    raise Exception(f"音频转换失败: {err_detail[:200]}")
+                    if process.returncode != 0:
+                        err_detail = stderr.decode() if stderr else "无错误输出"
+                        print(f"[ERROR] ffmpeg 转换失败 (fmt={fmt}, rc={process.returncode}): {err_detail[:500]}")
+                        raise Exception(f"音频转换失败: {err_detail[:200]}")
+                finally:
+                    audio_tmp.unlink(missing_ok=True)
 
             # 5. 视频+音频模式（现有逻辑）
             else:
@@ -448,65 +450,68 @@ async def _do_download(task_id: str, req: DownloadRequest):
                     video_tmp = output_dir / f"{task_id}_video.m4s"
                     audio_tmp = output_dir / f"{task_id}_audio.m4s"
 
-                    task["status"] = "downloading"
-                    task["message"] = "正在并发下载视频+音频..."
-                    task["progress"] = 0.1
+                    try:
+                        task["status"] = "downloading"
+                        task["message"] = "正在并发下载视频+音频..."
+                        task["progress"] = 0.1
 
-                    await asyncio.gather(
-                        _download_file(client, video_url, video_tmp, headers, task, 0.1, 0.85),
-                        _download_file(client, audio_url, audio_tmp, headers, task, 0.1, 0.85),
-                    )
-                    task["progress"] = 0.85
-
-                    # ffmpeg 合并（或硬烧录弹幕）
-                    task["status"] = "merging"
-                    task["progress"] = 0.85
-
-                    # 硬烧录模式：先拉弹幕生成ASS，再合并时烧入画面
-                    burn_ass = None
-                    if req.download_danmaku and req.danmaku_mode == "burn":
-                        try:
-                            task["message"] = "正在获取弹幕..."
-                            dm_data = await get_danmaku(req.cid, req.cookie)
-                            safe_for_file = safe_filename(req.title)
-                            burn_ass = output_dir / f"{safe_for_file}.ass"
-                            ass_text = danmaku_to_ass(dm_data["list"], title=safe_for_file)
-                            burn_ass.write_text(ass_text, encoding="utf-8")
-                            task["message"] = "正在烧录弹幕到画面..."
-                        except Exception:
-                            burn_ass = None  # 弹幕获取失败，降级为普通合并
-
-                    if burn_ass and burn_ass.exists():
-                        safe_ass = output_dir / f"{task_id}_danmaku.ass"
-                        safe_ass.write_text(burn_ass.read_text(encoding="utf-8"), encoding="utf-8")
-                        cmd = [
-                            FFMPEG_PATH, "-y",
-                            "-i", str(video_tmp.name),
-                            "-i", str(audio_tmp.name),
-                            "-vf", f"ass={safe_ass.name}",
-                            "-c:v", "libx264", "-crf", "20", "-preset", "fast",
-                            "-c:a", "copy",
-                            "-movflags", "+faststart",
-                            str(output_path.name),
-                        ]
-                        proc = await asyncio.create_subprocess_exec(
-                            *cmd,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE,
-                            cwd=str(output_dir),
+                        await asyncio.gather(
+                            _download_file(client, video_url, video_tmp, headers, task, 0.1, 0.85),
+                            _download_file(client, audio_url, audio_tmp, headers, task, 0.1, 0.85),
                         )
-                        _, stderr = await proc.communicate()
-                        safe_ass.unlink(missing_ok=True)
-                        burn_ass.unlink(missing_ok=True)  # 烧录完删掉临时ASS
-                        if proc.returncode != 0:
-                            raise Exception(f"弹幕烧录失败: {stderr.decode()[:200]}")
-                    else:
-                        task["message"] = "正在合并音视频..."
-                        await _merge_audio_video(video_tmp, audio_tmp, output_path)
+                        task["progress"] = 0.85
 
-                    # 清理临时文件
-                    video_tmp.unlink(missing_ok=True)
-                    audio_tmp.unlink(missing_ok=True)
+                        # ffmpeg 合并（或硬烧录弹幕）
+                        task["status"] = "merging"
+                        task["progress"] = 0.85
+
+                        # 硬烧录模式：先拉弹幕生成ASS，再合并时烧入画面
+                        burn_ass = None
+                        if req.download_danmaku and req.danmaku_mode == "burn":
+                            try:
+                                task["message"] = "正在获取弹幕..."
+                                dm_data = await get_danmaku(req.cid, req.cookie)
+                                safe_for_file = safe_filename(req.title)
+                                burn_ass = output_dir / f"{safe_for_file}.ass"
+                                ass_text = danmaku_to_ass(dm_data["list"], title=safe_for_file)
+                                burn_ass.write_text(ass_text, encoding="utf-8")
+                                task["message"] = "正在烧录弹幕到画面..."
+                            except Exception:
+                                burn_ass = None  # 弹幕获取失败，降级为普通合并
+
+                        if burn_ass and burn_ass.exists():
+                            safe_ass = output_dir / f"{task_id}_danmaku.ass"
+                            safe_ass.write_text(burn_ass.read_text(encoding="utf-8"), encoding="utf-8")
+                            try:
+                                cmd = [
+                                    FFMPEG_PATH, "-y",
+                                    "-i", str(video_tmp.name),
+                                    "-i", str(audio_tmp.name),
+                                    "-vf", f"ass={safe_ass.name}",
+                                    "-c:v", "libx264", "-crf", "20", "-preset", "fast",
+                                    "-c:a", "copy",
+                                    "-movflags", "+faststart",
+                                    str(output_path.name),
+                                ]
+                                proc = await asyncio.create_subprocess_exec(
+                                    *cmd,
+                                    stdout=asyncio.subprocess.PIPE,
+                                    stderr=asyncio.subprocess.PIPE,
+                                    cwd=str(output_dir),
+                                )
+                                _, stderr = await proc.communicate()
+                                if proc.returncode != 0:
+                                    raise Exception(f"弹幕烧录失败: {stderr.decode()[:200]}")
+                            finally:
+                                safe_ass.unlink(missing_ok=True)
+                                burn_ass.unlink(missing_ok=True)  # 烧录完删掉临时ASS
+                        else:
+                            task["message"] = "正在合并音视频..."
+                            await _merge_audio_video(video_tmp, audio_tmp, output_path)
+                    finally:
+                        # 清理临时 .m4s 文件（无论成功或失败都清理）
+                        video_tmp.unlink(missing_ok=True)
+                        audio_tmp.unlink(missing_ok=True)
 
                 elif durls:
                     # 旧格式：直接下载（音视频已合并）
