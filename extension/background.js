@@ -49,12 +49,12 @@ async function fetchVideoDetails(url, cookie, cid) {
 }
 
 // 开始下载
-async function startDownload(bvid, cid, title, quality, cookie, downloadPath, downloadMode, audioFormat, downloadDanmaku, danmakuMode) {
+async function startDownload(bvid, cid, title, quality, cookie, downloadPath, downloadMode, audioFormat, downloadDanmaku, danmakuMode, coverUrl) {
   try {
     const resp = await fetch(`${API_BASE}/api/download`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bvid, cid, title, quality, cookie, download_path: downloadPath || '', download_mode: downloadMode || 'video', audio_format: audioFormat || 'mp3', download_danmaku: downloadDanmaku || false, danmaku_mode: danmakuMode || 'soft' }),
+      body: JSON.stringify({ bvid, cid, title, quality, cookie, download_path: downloadPath || '', download_mode: downloadMode || 'video', audio_format: audioFormat || 'mp3', download_danmaku: downloadDanmaku || false, danmaku_mode: danmakuMode || 'soft', cover_url: coverUrl || '' }),
     });
 
     if (!resp.ok) {
@@ -101,7 +101,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // 开始下载
   if (msg.action === 'startDownload') {
-    startDownload(msg.bvid, msg.cid, msg.title, msg.quality, msg.cookie, msg.downloadPath, msg.downloadMode, msg.audioFormat, msg.downloadDanmaku, msg.danmakuMode).then(sendResponse);
+    startDownload(msg.bvid, msg.cid, msg.title, msg.quality, msg.cookie, msg.downloadPath, msg.downloadMode, msg.audioFormat, msg.downloadDanmaku, msg.danmakuMode, msg.coverUrl).then(sendResponse);
     return true;
   }
 

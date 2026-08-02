@@ -56,6 +56,9 @@ const els = {
   dmModeSoftRadio: document.querySelector('input[name="danmaku-mode"][value="soft"]'),
   dmModeBurnRadio: document.querySelector('input[name="danmaku-mode"][value="burn"]'),
   danmakuModeHint: document.getElementById('danmaku-mode-hint'),
+  // 下载队列
+  queueList: document.getElementById('queue-list'),
+  queueBackBtn: document.getElementById('queue-back-btn'),
 };
 
 // 默认下载路径
@@ -67,14 +70,13 @@ let state = {
   cid: null,
   title: '',
   cookie: '',
+  coverUrl: '',            // B站原始封面URL
   pages: [],
   qualities: [],
-  allQualities: [],       // 全部 12 种画质描述（含可用/不可用标记）
-  availableIds: [],       // 当前可用的画质 ID 列表
+  allQualities: [],        // 全部 12 种画质描述（含可用/不可用标记）
+  availableIds: [],        // 当前可用的画质 ID 列表
   selectedQuality: null,
-  currentTaskId: null,
-  pollInterval: null,
-  downloading: false,
+  activeTasks: [],         // 下载队列 [{taskId, title, intervalId, status, progress, message, filePath}]
   downloadPath: DEFAULT_DOWNLOAD_PATH,
   downloadMode: 'video',
   audioFormat: 'mp3',      // 'mp3' / 'flac' / 'hires'
@@ -217,8 +219,10 @@ async function loadVideoInfo() {
     // 封面
     if (details.cover) {
       els.videoCover.src = details.cover;
+      state.coverUrl = details.cover;
     } else {
       els.videoCover.style.display = 'none';
+      state.coverUrl = '';
     }
 
     els.videoTitle.textContent = details.title || state.title;
@@ -372,21 +376,16 @@ async function refreshQualityForPage(cid) {
 // ==================== 下载流程 ====================
 
 async function startDownload() {
-  if (state.downloading) return;
-
   const quality = parseInt(els.qualitySelect.value) || state.selectedQuality;
   if (!quality || quality === 0) return;
-
   const cid = parseInt(els.pageSelect.value) || state.cid;
 
-  state.downloading = true;
+  // 创建任务对象
+  const taskObj = { taskId: null, title: state.title, intervalId: null, status: 'preparing', progress: 0, message: '正在提交...', filePath: '' };
+  state.activeTasks.push(taskObj);
+
   show(els.progressPanel);
-  hide(els.videoPanel);
-  els.progressBar.style.width = '0%';
-  els.progressText.textContent = '正在提交下载请求...';
-  els.progressPercent.textContent = '0%';
-  hide(els.saveBtn);
-  hide(els.cancelBtn);
+  renderQueueList();
 
   try {
     const result = await runtimeSendMessage({
@@ -401,80 +400,93 @@ async function startDownload() {
       audioFormat: state.audioFormat,
       downloadDanmaku: state.downloadDanmaku,
       danmakuMode: state.danmakuMode,
+      coverUrl: state.coverUrl,
     });
 
     if (!result || !result.success) {
-      throw new Error((result && result.error) || '启动下载失败');
+      throw new Error((result && result.error) || '启动失败');
     }
 
-    state.currentTaskId = result.task_id;
-    // 轮询进度
-    state.pollInterval = setInterval(pollProgress, 1000);
+    taskObj.taskId = result.task_id;
+    taskObj.status = 'downloading';
+    taskObj.message = '下载中...';
+    taskObj.intervalId = setInterval(() => pollTaskProgress(taskObj), 1000);
+    renderQueueList();
 
   } catch (err) {
-    els.progressText.textContent = '错误: ' + err.message;
-    els.progressPercent.textContent = '❌';
-    show(els.cancelBtn);
-    state.downloading = false;
+    taskObj.status = 'failed';
+    taskObj.message = err.message;
+    renderQueueList();
   }
 }
 
-async function pollProgress() {
-  if (!state.currentTaskId) return;
+function pollTaskProgress(taskObj) {
+  if (!taskObj.taskId) return;
 
-  const task = await runtimeSendMessage({
-    action: 'checkProgress',
-    taskId: state.currentTaskId,
+  runtimeSendMessage({ action: 'checkProgress', taskId: taskObj.taskId }).then(task => {
+    if (!task) return;
+    taskObj.progress = task.progress || 0;
+    taskObj.message = task.message || '';
+    taskObj.status = task.status;
+
+    if (task.status === 'completed') {
+      clearInterval(taskObj.intervalId);
+      taskObj.filePath = task.file_path || '';
+    }
+    if (task.status === 'failed') {
+      clearInterval(taskObj.intervalId);
+    }
+    renderQueueList();
   });
+}
 
-  if (!task) return;
+function renderQueueList() {
+  els.queueList.innerHTML = '';
 
-  const percent = Math.round((task.progress || 0) * 100);
-  els.progressBar.style.width = percent + '%';
-  els.progressPercent.textContent = percent + '%';
-  els.progressText.textContent = task.message || '处理中...';
+  state.activeTasks.forEach((t, idx) => {
+    const div = document.createElement('div');
+    div.className = 'queue-item ' + t.status;
 
-  if (task.status === 'completed') {
-    // 下载完成
-    clearInterval(state.pollInterval);
-    state.pollInterval = null;
-    state.downloading = false;
-    els.progressText.textContent = task.message;
-    els.progressPercent.textContent = '✅ 完成';
+    const icon = t.status === 'completed' ? '✅' : t.status === 'failed' ? '❌' : '⏳';
+    const pct = Math.round((t.progress || 0) * 100);
 
-    // 获取下载链接
-    const { url } = await runtimeSendMessage({
-      action: 'getDownloadUrl',
-      taskId: state.currentTaskId,
+    div.innerHTML = `
+      <span class="q-icon">${icon}</span>
+      <div class="q-info">
+        <div class="q-title">${t.title}</div>
+        <div class="q-progress-bar"><div class="q-progress-fill" style="width:${pct}%"></div></div>
+        <div class="q-msg">${t.message}</div>
+      </div>
+      <span class="q-pct">${pct}%</span>
+      ${t.status === 'completed' ? `<button class="q-folder-btn" data-idx="${idx}" title="打开文件夹">📂</button>` : ''}
+    `;
+
+    div.querySelector('.q-folder-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      runtimeSendMessage({ action: 'openFolder', taskId: t.taskId });
     });
 
-    if (url) {
-      els.saveBtn.onclick = () => {
-        chrome.downloads.download({ url, saveAs: true });
-      };
-      show(els.saveBtn);
+    els.queueList.appendChild(div);
+  });
+
+  // 清理已完成/失败任务的 interval（防止泄漏）
+  state.activeTasks.forEach(t => {
+    if ((t.status === 'completed' || t.status === 'failed') && t.intervalId) {
+      clearInterval(t.intervalId);
+      t.intervalId = null;
     }
+  });
+}
 
-    // 显示打开文件夹按钮
-    els.openFolderBtn.onclick = async () => {
-      await runtimeSendMessage({
-        action: 'openFolder',
-        taskId: state.currentTaskId,
-      });
-    };
-    show(els.openFolderBtn);
-
-    show(els.cancelBtn);
-    els.cancelBtn.textContent = '下载新视频';
-  }
-
-  if (task.status === 'failed') {
-    clearInterval(state.pollInterval);
-    state.pollInterval = null;
-    state.downloading = false;
-    els.progressText.textContent = '失败: ' + task.message;
-    els.progressPercent.textContent = '❌';
-    show(els.cancelBtn);
+async function cancelAllTasks() {
+  state.activeTasks.forEach(t => {
+    if (t.intervalId) clearInterval(t.intervalId);
+  });
+  state.activeTasks = [];
+  renderQueueList();
+  show(els.videoPanel);
+  hide(els.progressPanel);
+}
   }
 }
 
@@ -748,6 +760,12 @@ els.downloadDanmakuCheckbox.addEventListener('change', () => {
 // 弹幕模式切换
 els.dmModeSoftLabel.addEventListener('click', () => saveDanmakuMode('soft'));
 els.dmModeBurnLabel.addEventListener('click', () => saveDanmakuMode('burn'));
+
+// 队列返回按钮
+els.queueBackBtn.addEventListener('click', () => {
+  show(els.videoPanel);
+  hide(els.progressPanel);
+});
 
 // ==================== 初始化 ====================
 

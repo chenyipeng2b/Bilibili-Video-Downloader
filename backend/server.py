@@ -109,6 +109,7 @@ class DownloadRequest(BaseModel):
     audio_format: str = "mp3"     # "mp3"/"flac"/"hires" — 仅 audio 模式有效
     download_danmaku: bool = False  # 是否同时下载弹幕
     danmaku_mode: str = "soft"       # "soft" = MKV软封装, "burn" = 硬烧录
+    cover_url: str = ""              # B站原始封面图URL
 
 
 class TaskStatus(BaseModel):
@@ -523,6 +524,15 @@ async def _do_download(task_id: str, req: DownloadRequest):
             task["message"] = f"下载完成: {output_filename}"
             task["file_path"] = str(output_path)
             task["file_size"] = os.path.getsize(output_path) if output_path.exists() else 0
+
+            # 封面下载
+            if req.cover_url:
+                try:
+                    cover_path = output_path.with_suffix(".jpg")
+                    async with httpx.AsyncClient(timeout=30.0) as cover_client:
+                        await _download_file(cover_client, req.cover_url, cover_path, headers, task, 0, 0)
+                except Exception as e:
+                    print(f"[WARN] 封面下载失败: {e}")
 
             # 7. 弹幕保存（可选）
             if req.download_danmaku:
