@@ -9,6 +9,11 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import httpx
 
+from logger import get_logger
+
+# 初始化日志
+logger = get_logger("bilibili_api")
+
 # B站 API 基础配置
 BILIBILI_API_BASE = "https://api.bilibili.com"
 HEADERS_TEMPLATE = {
@@ -71,6 +76,7 @@ async def get_video_info(bvid: str, cookie: str = "") -> dict:
         data = resp.json()
 
         if data["code"] != 0:
+            logger.error(f"B站 API 获取视频信息失败: bvid={bvid}, code={data['code']}, message={data.get('message', '未知错误')}")
             raise Exception(f"获取视频信息失败: {data.get('message', '未知错误')}")
 
         video_data = data["data"]
@@ -124,6 +130,7 @@ async def get_video_streams(
         data = resp.json()
 
         if data["code"] != 0:
+            logger.error(f"B站 API 获取视频流失败: bvid={bvid}, cid={cid}, code={data['code']}, message={data.get('message', '未知错误')}")
             raise Exception(f"获取视频流失败: {data.get('message', '未知错误')}")
 
         play_data = data["data"]
@@ -226,6 +233,7 @@ async def get_danmaku(cid: int, cookie: str = "") -> dict:
             fontsize = int(parts[2]) if len(parts) > 2 else 25
             color = int(parts[3]) if len(parts) > 3 else 16777215
         except (ValueError, IndexError):
+            logger.debug(f"弹幕 p 属性解析失败，使用默认值: cid={cid}, p_str={p_str[:50]}")
             time_sec = 0
             dm_type = 1
             fontsize = 25

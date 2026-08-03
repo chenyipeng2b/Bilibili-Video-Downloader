@@ -54,6 +54,9 @@
       chrome.runtime.sendMessage({ action: 'getCookies' }, (response) => {
         if (chrome.runtime.lastError || !response || !response.success) {
           // 降级：使用 document.cookie（拿不到 HttpOnly）
+          if (chrome.runtime.lastError) {
+            console.debug('getCookies 失败，降级使用 document.cookie:', chrome.runtime.lastError.message);
+          }
           resolve(document.cookie || '');
         } else {
           resolve(response.cookie || document.cookie || '');
@@ -118,11 +121,40 @@
   });
 
   // 页面加载完成后发送视频信息
-  if (document.readyState === 'complete') {
-    setTimeout(sendVideoInfo, 1000);
-  } else {
-    window.addEventListener('load', () => {
+  function initSendVideoInfo() {
+    if (document.readyState === 'complete') {
       setTimeout(sendVideoInfo, 1000);
-    });
+    } else {
+      window.addEventListener('load', () => {
+        setTimeout(sendVideoInfo, 1000);
+      });
+    }
   }
+
+  initSendVideoInfo();
+
+  // 监听 B站 SPA 页面内导航（用户点击推荐视频/切换视频等）
+  // B站使用 history.pushState，我们通过监听 URL 变化来重新发送信息
+  let lastUrl = window.location.href;
+  const urlCheckInterval = setInterval(() => {
+    const currentUrl = window.location.href;
+    if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
+      // 延迟等待页面渲染
+      setTimeout(() => {
+        if (isVideoPage()) {
+          sendVideoInfo();
+        }
+      }, 2000);
+    }
+  }, 1500);
+
+  // 同时也监听 popstate 事件
+  window.addEventListener('popstate', () => {
+    setTimeout(() => {
+      if (isVideoPage()) {
+        sendVideoInfo();
+      }
+    }, 2000);
+  });
 })();

@@ -8,156 +8,249 @@
 </head>
 <body>
   <div class="container">
-    <!-- 头部 -->
+    <!-- 头部 - B站蓝色 -->
     <div class="header">
-      <span class="logo">📺 B站视频下载</span>
-      <span class="version">v1.0</span>
+      <div class="header-left">
+        <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <polyline points="8 21 12 17 16 21"/>
+        </svg>
+        <span class="logo">B站视频下载</span>
+      </div>
+      <div class="header-right">
+        <button id="theme-toggle" class="theme-toggle" title="切换主题">
+          <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <span class="version">v1.0</span>
+      </div>
     </div>
 
-    <!-- 非视频页面提示 -->
-    <div id="not-video-page" class="state-box hidden">
-      <div class="state-icon">🎬</div>
-      <div class="state-text">请打开一个 B站视频页面</div>
-      <div class="state-sub">支持 bilibili.com/video/ 链接</div>
-    </div>
+    <!-- 主内容区 -->
+    <div class="main-content" id="main-content">
 
-    <!-- 加载中 -->
-    <div id="loading" class="state-box hidden">
-      <div class="spinner"></div>
-      <div class="state-text">正在获取视频信息...</div>
-      <div class="state-sub">请确保下载服务已启动</div>
-    </div>
-
-    <!-- 错误提示 -->
-    <div id="error-box" class="state-box hidden">
-      <div class="state-icon error-icon">❌</div>
-      <div class="state-text" id="error-text">出错了</div>
-      <button id="retry-btn" class="btn btn-small">重试</button>
-    </div>
-
-    <!-- 视频信息区 -->
-    <div id="video-panel" class="hidden">
-      <div class="video-info">
-        <div class="video-cover-wrapper">
-          <img id="video-cover" src="" alt="封面" class="video-cover">
-        </div>
-        <div class="video-meta">
-          <div class="video-title" id="video-title">-</div>
-          <div class="video-owner" id="video-owner">-</div>
-          <div class="video-duration" id="video-duration">-</div>
-        </div>
+      <!-- 非视频页面 -->
+      <div id="not-video-page" class="state-box hidden">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#C9CCD0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+        </svg>
+        <div class="state-text">请打开一个 B站视频页面</div>
+        <div class="state-sub">支持 bilibili.com/video/ 链接</div>
       </div>
 
-      <!-- 分P选择 -->
-      <div class="section">
-        <label class="section-label">分P选择</label>
-        <select id="page-select" class="select">
-          <option value="0">加载中...</option>
-        </select>
+      <!-- 加载中 -->
+      <div id="loading" class="state-box hidden">
+        <div class="spinner"></div>
+        <div class="state-text">正在获取视频信息...</div>
+        <div class="state-sub">请确保下载服务已启动</div>
       </div>
 
-      <!-- 画质选择 -->
-      <div class="section">
-        <label class="section-label">画质选择</label>
-        <select id="quality-select" class="select">
-          <option value="0">加载中...</option>
-        </select>
+      <!-- 错误提示 -->
+      <div id="error-box" class="state-box hidden">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#FF4D4F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <div class="state-text" id="error-text">出错了</div>
+        <button id="retry-btn" class="btn btn-primary btn-small">重试</button>
       </div>
 
-      <!-- 下载模式 -->
-      <div class="section" id="mode-section">
-        <label class="section-label">下载模式</label>
-        <div class="mode-selector">
-          <label class="mode-option active" id="mode-video-label">
-            <input type="radio" name="download-mode" value="video" checked>
-            <span>视频+音频</span>
-          </label>
-          <label class="mode-option" id="mode-audio-label">
-            <input type="radio" name="download-mode" value="audio">
-            <span>仅音频</span>
-          </label>
-        </div>
-      </div>
+      <!-- 视频信息面板 (Tab 1) -->
+      <div id="video-panel" class="hidden">
 
-      <!-- 音频格式选择（仅"仅音频"模式显示） -->
-      <div class="section hidden" id="audio-format-section">
-        <label class="section-label">音频格式</label>
-        <div class="mode-selector">
-          <label class="mode-option active" id="fmt-mp3-label">
-            <input type="radio" name="audio-format" value="mp3" checked>
-            <span>MP3</span>
-          </label>
-          <label class="mode-option" id="fmt-flac-label">
-            <input type="radio" name="audio-format" value="flac">
-            <span>FLAC</span>
-          </label>
-          <label class="mode-option" id="fmt-hires-label">
-            <input type="radio" name="audio-format" value="hires">
-            <span>Hi-Res</span>
-          </label>
+        <!-- 视频卡片 - B站移动端大封面布局 -->
+        <div class="video-card">
+          <div class="video-cover-wrapper">
+            <img id="video-cover" src="" alt="封面" class="video-cover" onerror="this.style.display='none'">
+            <span class="video-duration-badge" id="video-duration">-</span>
+            <span class="video-owner-badge" id="video-owner">-</span>
+          </div>
+          <div class="video-info">
+            <div class="video-title" id="video-title">-</div>
+            <div class="video-meta-row">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9499A0" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="video-duration-text">-</span>
+            </div>
+          </div>
         </div>
-        <div class="format-hint" id="format-hint"></div>
-      </div>
 
-      <!-- 下载路径 -->
-      <div class="section">
-        <label class="section-label">保存路径</label>
-        <div class="path-input-wrapper">
-          <input type="text" id="download-path-input" class="path-input" placeholder="G:\bilibili-downloader\downloads\">
-          <button id="select-path-btn" class="btn-icon" title="选择文件夹">📁</button>
-          <button id="reset-path-btn" class="btn-icon" title="恢复默认路径">↺</button>
+        <!-- 功能区 - 4列网格 -->
+        <div class="function-grid">
+          <div class="func-item" id="func-quality">
+            <div class="func-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+              </svg>
+            </div>
+            <span class="func-label">画质</span>
+          </div>
+          <div class="func-item" id="func-mode">
+            <div class="func-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#00AEEC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+              </svg>
+            </div>
+            <span class="func-label">模式</span>
+          </div>
+          <div class="func-item" id="func-danmaku">
+            <div class="func-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <span class="func-label">弹幕</span>
+          </div>
+          <div class="func-item" id="func-path">
+            <div class="func-icon pink">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FB7299" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <span class="func-label">路径</span>
+          </div>
         </div>
-        <div class="path-checkbox-row">
-          <input type="checkbox" id="save-path-checkbox">
-          <label for="save-path-checkbox">保存为默认下载路径</label>
-        </div>
-      </div>
 
-      <!-- 弹幕选项 -->
-      <div class="section" id="danmaku-section">
-        <div class="danmaku-row">
-          <input type="checkbox" id="download-danmaku-checkbox">
-          <label for="download-danmaku-checkbox">同时下载弹幕 (XML + JSON + ASS)</label>
+        <!-- 分P选择 -->
+        <div class="section">
+          <label class="section-label">分P选择</label>
+          <select id="page-select" class="select">
+            <option value="0">加载中...</option>
+          </select>
         </div>
-        <div class="danmaku-mode hidden" id="danmaku-mode-selector">
-          <label class="section-label" style="margin-top:6px">弹幕嵌入方式</label>
+
+        <!-- 画质选择 -->
+        <div class="section">
+          <label class="section-label">画质选择</label>
+          <select id="quality-select" class="select">
+            <option value="0">加载中...</option>
+          </select>
+        </div>
+
+        <!-- 下载模式 -->
+        <div class="section" id="mode-section">
+          <label class="section-label">下载模式</label>
           <div class="mode-selector">
-            <label class="mode-option active" id="dm-mode-soft-label">
-              <input type="radio" name="danmaku-mode" value="soft" checked>
-              <span>软封装 MKV</span>
+            <label class="mode-option active" id="mode-video-label">
+              <input type="radio" name="download-mode" value="video" checked>
+              <span>视频+音频</span>
             </label>
-            <label class="mode-option" id="dm-mode-burn-label">
-              <input type="radio" name="danmaku-mode" value="burn">
-              <span>硬烧录进画面</span>
+            <label class="mode-option" id="mode-audio-label">
+              <input type="radio" name="download-mode" value="audio">
+              <span>仅音频</span>
             </label>
           </div>
-          <div class="danmaku-mode-hint" id="danmaku-mode-hint"></div>
+        </div>
+
+        <!-- 音频格式 -->
+        <div class="section hidden" id="audio-format-section">
+          <label class="section-label">音频格式</label>
+          <div class="mode-selector">
+            <label class="mode-option active" id="fmt-mp3-label">
+              <input type="radio" name="audio-format" value="mp3" checked><span>MP3</span>
+            </label>
+            <label class="mode-option" id="fmt-flac-label">
+              <input type="radio" name="audio-format" value="flac"><span>FLAC</span>
+            </label>
+            <label class="mode-option" id="fmt-hires-label">
+              <input type="radio" name="audio-format" value="hires"><span>Hi-Res</span>
+            </label>
+          </div>
+          <div class="format-hint" id="format-hint"></div>
+        </div>
+
+        <!-- 下载路径 -->
+        <div class="section">
+          <label class="section-label">保存路径</label>
+          <div class="path-input-wrapper">
+            <input type="text" id="download-path-input" class="path-input" placeholder="G:\bilibili-downloader\downloads\">
+            <button id="select-path-btn" class="btn-icon" title="选择文件夹">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button id="reset-path-btn" class="btn-icon" title="恢复默认路径">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            </button>
+          </div>
+          <div class="path-checkbox-row">
+            <input type="checkbox" id="save-path-checkbox">
+            <label for="save-path-checkbox">保存为默认下载路径</label>
+          </div>
+        </div>
+
+        <!-- 弹幕 -->
+        <div class="section" id="danmaku-section">
+          <div class="danmaku-row">
+            <input type="checkbox" id="download-danmaku-checkbox">
+            <label for="download-danmaku-checkbox">同时下载弹幕 (XML + JSON + ASS)</label>
+          </div>
+          <div class="danmaku-mode hidden" id="danmaku-mode-selector">
+            <label class="section-label" style="margin-top:6px">弹幕嵌入方式</label>
+            <div class="mode-selector">
+              <label class="mode-option active" id="dm-mode-soft-label">
+                <input type="radio" name="danmaku-mode" value="soft" checked><span>软封装 MKV</span>
+              </label>
+              <label class="mode-option" id="dm-mode-burn-label">
+                <input type="radio" name="danmaku-mode" value="burn"><span>硬烧录进画面</span>
+              </label>
+            </div>
+            <div class="danmaku-mode-hint" id="danmaku-mode-hint"></div>
+          </div>
+        </div>
+
+        <!-- 服务状态 -->
+        <div id="server-status" class="server-status">
+          <span class="status-dot"></span>
+          <span id="server-status-text">检查服务...</span>
+        </div>
+
+        <!-- 下载按钮 -->
+        <button id="download-btn" class="btn btn-primary" disabled>获取视频信息</button>
+      </div>
+
+      <!-- 下载队列面板 (Tab 2) -->
+      <div id="progress-panel" class="hidden">
+        <div id="queue-list"></div>
+      </div>
+
+      <!-- 设置面板 (Tab 3) -->
+      <div id="settings-panel" class="hidden">
+        <div class="section">
+          <label class="section-label">主题设置</label>
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">点击头部太阳/月亮图标切换，长按锁定</p>
+        </div>
+        <div class="section">
+          <label class="section-label">关于</label>
+          <p style="font-size:12px;color:var(--text-secondary);">B站视频下载助手 v1.0<br>支持 8K / 4K / 1080P 等画质<br>支持弹幕下载与封装</p>
         </div>
       </div>
+    </div>
 
-      <!-- 服务状态 -->
-      <div id="server-status" class="server-status">
-        <span class="status-dot"></span>
-        <span id="server-status-text">检查服务...</span>
-      </div>
-
-      <!-- 下载按钮 -->
-      <button id="download-btn" class="btn btn-primary" disabled>
-        获取视频信息
+    <!-- 底部 Tab 栏 -->
+    <div class="bottom-tabs" id="bottom-tabs">
+      <button class="tab-item active" data-tab="video">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+        </svg>
+        <span>视频</span>
+      </button>
+      <button class="tab-item" data-tab="queue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>队列</span>
+      </button>
+      <button class="tab-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>设置</span>
       </button>
     </div>
-
-    <!-- 下载进度区 -->
-    <div id="progress-panel" class="hidden">
-      <div id="queue-list"></div>
-      <button id="queue-back-btn" class="btn btn-secondary" style="margin-top:10px;width:100%">⬅ 返回视频页面</button>
-    </div>
-
-    <!-- 底部 -->
-    <div class="footer">
-      <span class="tip">💡 提示：确保下载服务(端口8765)已启动</span>
-    </div>
   </div>
+
+  <script src="logger.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

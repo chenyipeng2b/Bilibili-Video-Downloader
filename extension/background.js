@@ -5,6 +5,8 @@
 
 'use strict';
 
+importScripts('logger.js');
+
 const API_BASE = 'http://127.0.0.1:8765';
 
 // 缓存当前页面的视频信息
@@ -37,6 +39,7 @@ async function fetchVideoDetails(url, cookie, cid) {
 
     if (!resp.ok) {
       const err = await resp.json();
+      Log.error('获取视频信息 API 返回非 ok', new Error(err.detail || '获取视频信息失败'), { url, cid });
       throw new Error(err.detail || '获取视频信息失败');
     }
 
@@ -44,6 +47,7 @@ async function fetchVideoDetails(url, cookie, cid) {
     cachedQualities = data;
     return data;
   } catch (e) {
+    Log.error('获取视频信息失败', e, { url, cid });
     return { success: false, error: e.message };
   }
 }
@@ -59,12 +63,14 @@ async function startDownload(bvid, cid, title, quality, cookie, downloadPath, do
 
     if (!resp.ok) {
       const err = await resp.json();
+      Log.error('启动下载 API 返回非 ok', new Error(err.detail || '启动下载失败'), { bvid, cid, quality });
       throw new Error(err.detail || '启动下载失败');
     }
 
     const data = await resp.json();
     return { success: true, task_id: data.task_id };
   } catch (e) {
+    Log.error('启动下载失败', e, { bvid, cid, title, quality });
     return { success: false, error: e.message };
   }
 }
@@ -76,6 +82,7 @@ async function checkTaskProgress(taskId) {
     if (!resp.ok) throw new Error('查询失败');
     return await resp.json();
   } catch (e) {
+    Log.error('查询任务进度失败', e, { taskId });
     return { status: 'error', message: e.message };
   }
 }

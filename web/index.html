@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>B站视频下载器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="top-bar">
+        <div class="top-bar-inner">
+            <div class="logo-area">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <polygon points="10,8 10,12 16,10"/>
+                    <line x1="2" y1="19" x2="22" y2="19"/>
+                </svg>
+                <span class="logo-text">B站视频下载</span>
+            </div>
+            <span class="version-tag">Web v1.0</span>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <section class="card" id="input-card">
+            <h2 class="card-title">视频链接</h2>
+            <div class="input-row">
+                <input type="text" id="url-input" class="text-input" placeholder="粘贴 B站视频链接或 BV 号..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <button id="fetch-btn" class="btn btn-primary">
+                    <span class="btn-icon">🔍</span>
+                    <span class="btn-label">获取信息</span>
+                </button>
+            </div>
+            <div class="collapsible" id="cookie-section">
+                <button class="collapsible-toggle" id="cookie-toggle">
+                    <span>Cookie 设置（可选，需要大会员画质时填写）</span>
+                    <span class="toggle-arrow">▼</span>
+                </button>
+                <div class="collapsible-content hidden" id="cookie-content">
+                    <textarea id="cookie-input" class="text-input cookie-input" placeholder="在此粘贴从 B站页面复制的 Cookie..." rows="3"></textarea>
+                    <details class="cookie-help">
+                        <summary>如何获取 Cookie？</summary>
+                        <ol>
+                            <li>在桌面端浏览器打开 bilibili.com 并登录</li>
+                            <li>按 F12 打开开发者工具</li>
+                            <li>进入 Application（应用程序）→ Cookies</li>
+                            <li>找到 bilibili.com，复制所有 Cookie 值</li>
+                            <li>粘贴到上方输入框中</li>
+                        </ol>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section class="card hidden" id="video-card">
+            <h2 class="card-title">视频信息</h2>
+            <div class="video-info-layout">
+                <div class="cover-area">
+                    <img id="cover-img" class="cover-img" src="" alt="视频封面" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22135%22%3E%3Crect fill=%22%232a2a3e%22 width=%22240%22 height=%22135%22/%3E%3Ctext fill=%22%23666%22 x=%22120%22 y=%2272%22 text-anchor=%22middle%22 font-size=%2214%22%3E暂无封面%3C/text%3E%3C/svg%3E'" />
+                </div>
+                <div class="info-area">
+                    <h3 id="video-title" class="video-title">-</h3>
+                    <p id="video-owner" class="video-meta">-</p>
+                    <p id="video-duration" class="video-meta">-</p>
+                </div>
+            </div>
+            <div class="form-group hidden" id="page-group">
+                <label class="form-label">选择分P</label>
+                <select id="page-select" class="form-select"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">画质选择</label>
+                <select id="quality-select" class="form-select"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">下载模式</label>
+                <div class="mode-switch">
+                    <button class="mode-btn active" data-mode="video">视频 + 音频</button>
+                    <button class="mode-btn" data-mode="audio">仅音频</button>
+                </div>
+            </div>
+            <div class="form-group hidden" id="audio-format-group">
+                <label class="form-label">音频格式</label>
+                <select id="audio-format-select" class="form-select">
+                    <option value="mp3">MP3 (320kbps)</option>
+                    <option value="flac">FLAC 无损</option>
+                    <option value="hires">Hi-Res FLAC</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-checkbox-label">
+                    <input type="checkbox" id="danmaku-check" />
+                    <span>同时下载弹幕</span>
+                </label>
+                <select id="danmaku-mode-select" class="form-select hidden" style="margin-top:8px">
+                    <option value="soft">软封装（MKV 字幕轨）</option>
+                    <option value="burn">硬烧录（嵌入画面）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">保存路径</label>
+                <input type="text" id="path-input" class="text-input" placeholder="留空使用默认目录 downloads/" />
+            </div>
+            <div class="service-status" id="service-status">
+                <span class="status-dot"></span>
+                <span id="status-text">等待操作</span>
+            </div>
+            <button id="download-btn" class="btn btn-primary btn-block">
+                <span class="btn-icon">⬇</span>
+                <span>开始下载</span>
+            </button>
+        </section>
+
+        <section class="card hidden" id="queue-card">
+            <h2 class="card-title">
+                下载队列
+                <span id="queue-count" class="queue-count-badge">0</span>
+            </h2>
+            <div id="queue-list" class="queue-list"></div>
+            <button id="queue-back-btn" class="btn btn-secondary btn-block" style="margin-top:12px">返回视频页面</button>
+        </section>
+
+        <footer class="footer-hint">
+            <p>确保下载服务已启动（端口 8765）</p>
+            <p id="lan-hint"></p>
+        </footer>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -27,6 +27,10 @@ from bilibili_api import (
     QUALITY_ORDER,
     HEADERS_TEMPLATE,
 )
+from logger import get_logger, get_log_files, read_logs
+
+# 初始化日志
+logger = get_logger("server")
 
 app = FastAPI(
     title="B站视频下载服务",
@@ -140,6 +144,7 @@ async def api_video_info(req: dict):
 
     bvid = extract_bvid(url)
     if not bvid:
+        logger.error(f"无法识别 B站视频链接: url={url}")
         raise HTTPException(400, "无法识别 B站视频链接，请提供 BV 号或完整链接")
 
     try:
@@ -210,6 +215,7 @@ async def api_video_info(req: dict):
             "current_quality": streams["quality_name"],
         }
     except Exception as e:
+        logger.error(f"获取视频信息失败: bvid={bvid}, url={url}", exc_info=True)
         raise HTTPException(500, str(e))
 
 
@@ -227,6 +233,8 @@ async def api_download(req: DownloadRequest):
         "title": req.title,
     }
 
+    logger.info(f"新建下载任务: task_id={task_id}, bvid={req.bvid}, title={req.title}, quality={req.quality}, mode={req.download_mode}")
+
     # 异步执行下载
     asyncio.create_task(_do_download(task_id, req))
 
@@ -238,6 +246,7 @@ def api_task_status(task_id: str):
     """查询下载任务进度"""
     task = download_tasks.get(task_id)
     if not task:
+        logger.warning(f"查询不存在的任务: task_id={task_id}")
         raise HTTPException(404, "任务不存在")
     return task
 
@@ -271,20 +280,25 @@ def api_open_folder(req: dict):
     task_id = req.get("task_id", "")
     task = download_tasks.get(task_id)
     if not task:
+        logger.warning(f"open-folder 任务不存在: task_id={task_id}")
         raise HTTPException(404, "任务不存在")
 
     file_path = task.get("file_path", "")
     if not file_path:
+        logger.warning(f"open-folder 文件路径为空: task_id={task_id}")
         raise HTTPException(400, "文件路径不存在")
 
     folder = os.path.dirname(file_path)
     if os.path.exists(folder):
         try:
             os.startfile(folder)
+            logger.info(f"打开文件夹: {folder}")
             return {"success": True, "folder": folder}
         except Exception as e:
+            logger.error(f"打开文件夹失败: folder={folder}", exc_info=True)
             raise HTTPException(500, f"打开文件夹失败: {e}")
     else:
+        logger.error(f"文件夹不存在: folder={folder}")
         raise HTTPException(404, f"文件夹不存在: {folder}")
 
 
@@ -293,12 +307,15 @@ async def api_download_file(task_id: str):
     """下载已完成的文件"""
     task = download_tasks.get(task_id)
     if not task:
+        logger.warning(f"下载文件时任务不存在: task_id={task_id}")
         raise HTTPException(404, "任务不存在")
     if task["status"] != "completed":
+        logger.warning(f"下载文件时任务未完成: task_id={task_id}, status={task['status']}")
         raise HTTPException(400, "文件尚未下载完成")
 
     file_path = task.get("file_path")
     if not file_path or not os.path.exists(file_path):
+        logger.error(f"下载文件不存在: task_id={task_id}, file_path={file_path}")
         raise HTTPException(404, "文件不存在")
 
     filename = os.path.basename(file_path)
@@ -342,6 +359,7 @@ async def _do_download(task_id: str, req: DownloadRequest):
             )
             data = resp.json()
             if data["code"] != 0:
+                logger.error(f"B站 API 返回非0: bvid={req.bvid}, cid={req.cid}, code={data['code']}, message={data.get('message')}")
                 raise Exception(f"获取下载地址失败: {data.get('message')}")
 
             play_data = data["data"]
@@ -375,6 +393,7 @@ async def _do_download(task_id: str, req: DownloadRequest):
                 durls = play_data.get("durl", [])
 
             if not video_url and not durls:
+                logger.error(f"未找到可用的视频流: bvid={req.bvid}, cid={req.cid}, quality={req.quality}")
                 raise Exception("未找到可用的视频流")
 
             # 3. 确定下载目录
@@ -387,6 +406,7 @@ async def _do_download(task_id: str, req: DownloadRequest):
             # 4. 纯音频模式
             if req.download_mode == "audio":
                 if not audio_url:
+                    logger.error(f"旧格式视频不支持纯音频下载: bvid={req.bvid}, cid={req.cid}")
                     raise Exception("此视频为旧格式（音视频已合并），不支持纯音频下载，请选择'视频+音频'模式")
 
                 audio_tmp = output_dir / f"{task_id}_audio.m4s"
@@ -432,7 +452,7 @@ async def _do_download(task_id: str, req: DownloadRequest):
 
                     if process.returncode != 0:
                         err_detail = stderr.decode() if stderr else "无错误输出"
-                        print(f"[ERROR] ffmpeg 转换失败 (fmt={fmt}, rc={process.returncode}): {err_detail[:500]}")
+                        logger.error(f"ffmpeg 音频转换失败: task_id={task_id}, fmt={fmt}, rc={process.returncode}, detail={err_detail[:500]}")
                         raise Exception(f"音频转换失败: {err_detail[:200]}")
                 finally:
                     audio_tmp.unlink(missing_ok=True)
@@ -476,7 +496,8 @@ async def _do_download(task_id: str, req: DownloadRequest):
                                 ass_text = danmaku_to_ass(dm_data["list"], title=safe_for_file)
                                 burn_ass.write_text(ass_text, encoding="utf-8")
                                 task["message"] = "正在烧录弹幕到画面..."
-                            except Exception:
+                            except Exception as dm_ex:
+                                logger.warning(f"弹幕获取失败，降级为普通合并: task_id={task_id}", exc_info=True)
                                 burn_ass = None  # 弹幕获取失败，降级为普通合并
 
                         if burn_ass and burn_ass.exists():
@@ -501,7 +522,9 @@ async def _do_download(task_id: str, req: DownloadRequest):
                                 )
                                 _, stderr = await proc.communicate()
                                 if proc.returncode != 0:
-                                    raise Exception(f"弹幕烧录失败: {stderr.decode()[:200]}")
+                                    err_detail = stderr.decode()[:200] if stderr else "无错误输出"
+                                    logger.error(f"ffmpeg 弹幕烧录失败: task_id={task_id}, rc={proc.returncode}, detail={err_detail}")
+                                    raise Exception(f"弹幕烧录失败: {err_detail}")
                             finally:
                                 safe_ass.unlink(missing_ok=True)
                                 burn_ass.unlink(missing_ok=True)  # 烧录完删掉临时ASS
@@ -569,12 +592,12 @@ async def _do_download(task_id: str, req: DownloadRequest):
                             task["file_size"] = os.path.getsize(output_path)
                         else:
                             tmp_out.unlink(missing_ok=True)
-                            print(f"[WARN] 封面嵌入失败: {stderr.decode()[:200]}")
+                            logger.warning(f"封面嵌入失败: task_id={task_id}, detail={stderr.decode()[:200]}")
                     else:
                         cover_tmp.unlink(missing_ok=True)
-                        print(f"[WARN] 封面文件太小，跳过嵌入")
+                        logger.warning(f"封面文件太小，跳过嵌入: task_id={task_id}")
                 except Exception as e:
-                    print(f"[WARN] 封面处理失败: {e}")
+                    logger.warning(f"封面处理失败: task_id={task_id}", exc_info=True)
 
             # 7. 弹幕保存（可选）
             if req.download_danmaku:
@@ -625,13 +648,13 @@ async def _do_download(task_id: str, req: DownloadRequest):
                             else:
                                 task["message"] += f" + 弹幕({dm_data['count']}条, 封装失败)";
                     except Exception as dm_err:
-                        print(f"弹幕保存失败: {dm_err}")
+                        logger.warning(f"弹幕保存失败: task_id={task_id}, bvid={req.bvid}", exc_info=True)
                         task["message"] += " (弹幕保存失败)"
 
     except Exception as e:
         task["status"] = "failed"
         task["message"] = str(e)
-        print(f"下载失败: {e}")
+        logger.error(f"下载失败: task_id={task_id}, bvid={req.bvid}, title={req.title}, quality={req.quality}", exc_info=True)
 
 
 async def _download_file(
@@ -687,13 +710,65 @@ async def _merge_audio_video(video_path: Path, audio_path: Path, output_path: Pa
 
     if process.returncode != 0:
         err_msg = stderr.decode() if stderr else "ffmpeg 合并失败"
+        logger.error(f"ffmpeg 合并失败: rc={process.returncode}, detail={err_msg[:500]}")
         raise Exception(f"ffmpeg 合并失败: {err_msg[:500]}")
+
+
+# ==================== 日志 API ====================
+
+class LogEntry(BaseModel):
+    level: str = "ERROR"          # ERROR / WARNING / INFO
+    module: str = "unknown"        # background / popup / content
+    message: str = ""
+    context: dict = {}
+    stack: str = ""
+
+
+@app.post("/api/log")
+async def api_log(entry: LogEntry):
+    """接收浏览器扩展端的日志，统一写入后端日志文件"""
+    ext_logger = get_logger(f"ext_{entry.module}")
+
+    extra = {
+        "context": entry.context,
+        "stack": entry.stack,
+    }
+
+    level = entry.level.upper()
+    if level == "ERROR":
+        ext_logger.error(f"[扩展:{entry.module}] {entry.message}", extra=extra)
+    elif level == "WARNING":
+        ext_logger.warning(f"[扩展:{entry.module}] {entry.message}", extra=extra)
+    else:
+        ext_logger.info(f"[扩展:{entry.module}] {entry.message}", extra=extra)
+
+    return {"success": True}
+
+
+@app.get("/api/logs")
+async def api_logs(date: str = "", level: str = "", module: str = "", limit: int = 100):
+    """查询日志，支持按日期、级别、模块筛选"""
+    entries = read_logs(module=module or "", date=date, level=level, limit=min(limit, 500))
+    return {
+        "success": True,
+        "count": len(entries),
+        "logs": entries,
+    }
+
+
+@app.get("/api/log-files")
+async def api_log_files():
+    """获取日志文件列表"""
+    files = get_log_files()
+    return {
+        "success": True,
+        "files": files,
+    }
 
 
 # ==================== 启动 ====================
 
 if __name__ == "__main__":
     import uvicorn
-    print(f"ffmpeg 路径: {FFMPEG_PATH}")
-    print(f"下载目录: {DOWNLOAD_DIR}")
+    logger.info(f"服务启动 - ffmpeg 路径: {FFMPEG_PATH}, 下载目录: {DOWNLOAD_DIR}")
     uvicorn.run("server:app", host="127.0.0.1", port=8765, reload=False)
