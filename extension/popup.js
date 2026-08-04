@@ -1004,6 +1004,52 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (funcDanmaku) funcDanmaku.addEventListener('click', () => document.getElementById('danmaku-section').scrollIntoView({ behavior: 'smooth' }));
   if (funcPath) funcPath.addEventListener('click', () => els.downloadPathInput.focus());
 
+  // 日志按钮事件
+  const viewLogBtn = document.getElementById('view-log-btn');
+  const logCloseBtn = document.getElementById('log-close-btn');
+  const logModal = document.getElementById('log-modal');
+  const logBody = document.getElementById('log-body');
+  const clearLogBtn = document.getElementById('clear-log-btn');
+
+  if (viewLogBtn && logModal) {
+    viewLogBtn.addEventListener('click', async () => {
+      logModal.classList.remove('hidden');
+      logBody.innerHTML = '<div class="log-empty">加载中...</div>';
+      try {
+        const resp = await fetch('http://127.0.0.1:8765/api/logs?limit=50');
+        const data = await resp.json();
+        if (data.success && data.logs.length > 0) {
+          logBody.innerHTML = data.logs.map(entry => {
+            const level = (entry.level || 'info').toLowerCase();
+            const ts = entry.timestamp || '';
+            const msg = entry.message || '';
+            return `<div class="log-entry ${level}"><span class="log-ts">${ts}</span><span class="log-level ${level}">[${level.toUpperCase()}]</span>${msg}</div>`;
+          }).join('');
+        } else {
+          logBody.innerHTML = '<div class="log-empty">暂无日志记录</div>';
+        }
+      } catch (e) {
+        logBody.innerHTML = '<div class="log-empty">无法获取日志，请确认后端服务已启动</div>';
+      }
+    });
+
+    logCloseBtn.addEventListener('click', () => logModal.classList.add('hidden'));
+    logModal.addEventListener('click', (e) => {
+      if (e.target === logModal) logModal.classList.add('hidden');
+    });
+  }
+
+  if (clearLogBtn) {
+    clearLogBtn.addEventListener('click', async () => {
+      try {
+        await fetch('http://127.0.0.1:8765/api/logs/clear', { method: 'POST' });
+        alert('日志已清空');
+      } catch (e) {
+        alert('清空失败，请确认后端服务已启动');
+      }
+    });
+  }
+
   await loadSavedPath();
   await loadSavedMode();
   await loadSavedAudioFormat();

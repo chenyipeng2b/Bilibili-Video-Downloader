@@ -221,8 +221,24 @@
           <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">点击头部太阳/月亮图标切换，长按锁定</p>
         </div>
         <div class="section">
+          <label class="section-label">日志查看</label>
+          <button id="view-log-btn" class="btn btn-secondary" style="margin-bottom:6px;">查看最近日志</button>
+          <button id="clear-log-btn" class="btn btn-secondary" style="font-size:11px;padding:8px;">清空日志文件</button>
+        </div>
+        <div class="section">
           <label class="section-label">关于</label>
           <p style="font-size:12px;color:var(--text-secondary);">B站视频下载助手 v1.0<br>支持 8K / 4K / 1080P 等画质<br>支持弹幕下载与封装</p>
+        </div>
+      </div>
+
+      <!-- 日志弹窗 -->
+      <div id="log-modal" class="log-modal hidden">
+        <div class="log-modal-content">
+          <div class="log-modal-header">
+            <span class="log-modal-title">日志记录</span>
+            <button id="log-close-btn" class="log-close-btn">&times;</button>
+          </div>
+          <div id="log-body" class="log-body">加载中...</div>
         </div>
       </div>
     </div>

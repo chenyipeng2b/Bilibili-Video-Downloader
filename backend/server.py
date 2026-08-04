@@ -766,6 +766,20 @@ async def api_log_files():
     }
 
 
+@app.post("/api/logs/clear")
+async def api_clear_logs():
+    """清空所有日志文件"""
+    from pathlib import Path
+    log_dir = Path(__file__).parent / "logs"
+    count = 0
+    if log_dir.exists():
+        for f in log_dir.glob("*.log"):
+            f.write_text("", encoding="utf-8")
+            count += 1
+    logger.info(f"日志已清空: {count} 个文件")
+    return {"success": True, "cleared": count}
+
+
 # ==================== 启动 ====================
 
 if __name__ == "__main__":
