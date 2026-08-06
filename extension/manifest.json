@@ -8,7 +8,8 @@
     "storage",
     "downloads",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "*://*.bilibili.com/*",
@@ -27,7 +28,7 @@
   "content_scripts": [
     {
       "matches": ["*://*.bilibili.com/video/*"],
-      "js": ["content.js"],
+      "js": ["logger.js", "content.js"],
       "run_at": "document_end"
     }
   ],

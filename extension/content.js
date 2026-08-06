@@ -56,6 +56,11 @@
           // 降级：使用 document.cookie（拿不到 HttpOnly）
           if (chrome.runtime.lastError) {
             console.debug('getCookies 失败，降级使用 document.cookie:', chrome.runtime.lastError.message);
+            if (typeof Log !== 'undefined') {
+              void Log.warn('获取完整 Cookie 失败，已降级使用 document.cookie', {
+                error: chrome.runtime.lastError.message,
+              });
+            }
           }
           resolve(document.cookie || '');
         } else {
@@ -92,6 +97,13 @@
     }, () => {
       if (chrome.runtime.lastError) {
         console.debug('sendMessage videoInfo:', chrome.runtime.lastError.message);
+        if (typeof Log !== 'undefined') {
+          void Log.warn('向 background 发送视频信息失败', {
+            error: chrome.runtime.lastError.message,
+            bvid,
+            cid,
+          });
+        }
       }
     });
   }

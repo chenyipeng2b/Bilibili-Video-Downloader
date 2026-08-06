@@ -8,6 +8,7 @@ import re
 import json
 import asyncio
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -57,6 +58,71 @@ def safe_filename(name: str) -> str:
     """移除文件名中的非法字符"""
     name = re.sub(r'[<>:"/\\|?*]', '_', name)
     return name[:100]  # 限制长度
+
+
+def select_folder_native(initial_dir: Path) -> str:
+    """使用独立的系统进程打开文件夹选择器，避免 Tk 在线程中崩溃。"""
+    initial_path = str(initial_dir.resolve())
+
+    if sys.platform == "darwin":
+        escaped_path = initial_path.replace("\\", "\\\\").replace('"', '\\"')
+        script = (
+            'set selectedFolder to choose folder with prompt "选择下载保存路径" '
+            f'default location POSIX file "{escaped_path}"\n'
+            'return POSIX path of selectedFolder'
+        )
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        # AppleScript -128 表示用户主动取消，不应视为服务错误。
+        if "-128" in result.stderr or "User canceled" in result.stderr:
+            return ""
+        raise RuntimeError(result.stderr.strip() or "macOS 文件夹选择器启动失败")
+
+    if os.name == "nt":
+        escaped_path = initial_path.replace("'", "''")
+        powershell_script = (
+            "$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new();"
+            "Add-Type -AssemblyName System.Windows.Forms;"
+            "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog;"
+            "$dialog.Description = '选择下载保存路径';"
+            f"$dialog.SelectedPath = '{escaped_path}';"
+            "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {"
+            "[Console]::Write($dialog.SelectedPath)"
+            "}"
+        )
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-STA", "-Command", powershell_script],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=600,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "Windows 文件夹选择器启动失败")
+        return result.stdout.strip()
+
+    raise RuntimeError("当前系统不支持原生文件夹选择器")
+
+
+def open_folder_native(folder: str) -> None:
+    """使用当前操作系统的文件管理器打开目录。"""
+    if sys.platform == "darwin":
+        result = subprocess.run(["open", folder], capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "Finder 打开失败")
+    elif os.name == "nt":
+        os.startfile(folder)
+    else:
+        result = subprocess.run(["xdg-open", folder], capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "文件管理器打开失败")
 
 
 def find_ffmpeg() -> str:
@@ -254,24 +320,17 @@ def api_task_status(task_id: str):
 @app.get("/api/select-folder")
 def api_select_folder():
     """打开原生文件夹选择对话框，返回选中的路径"""
-    import tkinter as tk
-    from tkinter import filedialog
-
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes('-topmost', True)
-
-    folder_path = filedialog.askdirectory(
-        title="选择下载保存路径",
-        initialdir=str(DOWNLOAD_DIR)
-    )
-
-    root.destroy()
-
-    if folder_path:
-        return {"success": True, "path": folder_path}
-    else:
+    try:
+        folder_path = select_folder_native(DOWNLOAD_DIR)
+        if folder_path:
+            return {"success": True, "path": folder_path}
         return {"success": False, "path": ""}
+    except subprocess.TimeoutExpired:
+        logger.warning("文件夹选择超时")
+        raise HTTPException(504, "文件夹选择超时，请重试")
+    except Exception as e:
+        logger.error("打开文件夹选择器失败", exc_info=True)
+        raise HTTPException(500, f"打开文件夹选择器失败: {e}")
 
 
 @app.post("/api/open-folder")
@@ -291,7 +350,7 @@ def api_open_folder(req: dict):
     folder = os.path.dirname(file_path)
     if os.path.exists(folder):
         try:
-            os.startfile(folder)
+            open_folder_native(folder)
             logger.info(f"打开文件夹: {folder}")
             return {"success": True, "folder": folder}
         except Exception as e:
@@ -764,20 +823,6 @@ async def api_log_files():
         "success": True,
         "files": files,
     }
-
-
-@app.post("/api/logs/clear")
-async def api_clear_logs():
-    """清空所有日志文件"""
-    from pathlib import Path
-    log_dir = Path(__file__).parent / "logs"
-    count = 0
-    if log_dir.exists():
-        for f in log_dir.glob("*.log"):
-            f.write_text("", encoding="utf-8")
-            count += 1
-    logger.info(f"日志已清空: {count} 个文件")
-    return {"success": True, "cleared": count}
 
 
 # ==================== 启动 ====================

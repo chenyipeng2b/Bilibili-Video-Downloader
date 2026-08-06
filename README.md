@@ -3,16 +3,19 @@
 ========================================
 
 【Prerequisites】
-  - Windows OS
+  - Windows or macOS
   - Chrome / Edge browser
   - Python 3.10+ (https://www.python.org/downloads/)
-    Check "Add Python to PATH" during installation
+    Windows: check "Add Python to PATH" during installation
 
 
 【3-Step Setup】
 
- Step 1: Double-click "启动服务.bat"
-         - First run auto-installs dependencies
+ Step 1: Start the local service
+         - Windows: double-click "启动服务.bat"
+         - macOS:  double-click "启动服务.command"
+           If macOS blocks it, right-click the file and choose Open once
+         - First run creates .venv and downloads dependencies + FFmpeg
          - Keep the window open (service runs on port 8765)
 
  Step 2: Load the browser extension
@@ -41,11 +44,18 @@
     All 12 quality tiers displayed (locked items grayed out)
     Login to unlock higher qualities
 
+  Log Copy
+    Click the [LOG] button at the top of the extension popup
+    Copies the latest 500 extension and backend log entries as JSON
+    Entries are ordered from newest to oldest
+    If the service is offline, local extension diagnostics are copied instead
+
 
 【FAQ】
 
   Q: Extension shows "Service not started"
-  A: Double-click "启动服务.bat", wait for port 8765
+  A: Run "启动服务.bat" (Windows) or "启动服务.command" (macOS)
+     Keep the service window open and wait for port 8765
 
   Q: Higher qualities (4K/1080P60) are locked
   A: Log in to Bilibili first, extension reads your cookie
@@ -53,11 +63,15 @@
   Q: MKV has no danmaku
   A: Right-click video -> Subtitles -> Enable, or use Hard Burn mode
 
+  Q: The LOG button shows "Copy failed"
+  A: This now only means clipboard access failed. Service-offline diagnostics
+     are copied automatically. Startup details: backend/logs/startup.log
+
 
 【Share with friends】
 
-  Zip the entire folder and send. They just need to:
+  Do not include the generated .venv folder when sharing. The recipient should:
   1. Unzip
-  2. Double-click "启动服务.bat"
+  2. Run the startup file for their system
   3. Load the "extension" folder in browser
   4. Open Bilibili video page

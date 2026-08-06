@@ -167,10 +167,12 @@ const els = {
   tabItems: document.querySelectorAll('.tab-item'),
   settingsPanel: document.getElementById('settings-panel'),
   mainContent: document.getElementById('main-content'),
+  copyLogBtn: document.getElementById('copy-log-btn'),
 };
 
 // 默认下载路径
-const DEFAULT_DOWNLOAD_PATH = 'G:\\bilibili-downloader\\downloads\\';
+const DEFAULT_DOWNLOAD_PATH = '';
+const DEFAULT_DOWNLOAD_PATH_HINT = '留空使用项目 downloads 文件夹';
 
 // 状态
 let state = {
@@ -268,6 +270,140 @@ function tabsSendMessage(tabId, message) {
   });
 }
 
+// ==================== 日志复制 ====================
+
+const LOG_COPY_LIMIT = 500;
+const LOG_BUTTON_DEFAULT_TEXT = 'LOG';
+let logButtonResetTimer = null;
+
+/** 更新顶部 LOG 按钮状态，并在需要时恢复默认外观 */
+function setLogButtonState(text, stateClass, title, resetDelay = 0) {
+  if (!els.copyLogBtn) return;
+
+  if (logButtonResetTimer) {
+    clearTimeout(logButtonResetTimer);
+    logButtonResetTimer = null;
+  }
+
+  els.copyLogBtn.textContent = text;
+  els.copyLogBtn.title = title;
+  els.copyLogBtn.classList.remove('is-loading', 'is-success', 'is-offline', 'is-empty', 'is-error');
+  if (stateClass) els.copyLogBtn.classList.add(stateClass);
+
+  if (resetDelay > 0) {
+    logButtonResetTimer = setTimeout(() => {
+      els.copyLogBtn.textContent = LOG_BUTTON_DEFAULT_TEXT;
+      els.copyLogBtn.title = `复制最新 ${LOG_COPY_LIMIT} 条日志`;
+      els.copyLogBtn.classList.remove('is-loading', 'is-success', 'is-offline', 'is-empty', 'is-error');
+      logButtonResetTimer = null;
+    }, resetDelay);
+  }
+}
+
+/** 根据操作系统返回正确的一键启动提示 */
+function getServiceStartHint() {
+  const platform = (navigator.userAgentData && navigator.userAgentData.platform)
+    || navigator.platform
+    || navigator.userAgent
+    || '';
+  if (/mac/i.test(platform)) {
+    return '请双击项目根目录的“启动服务.command”';
+  }
+  if (/win/i.test(platform)) {
+    return '请双击项目根目录的“启动服务.bat”';
+  }
+  return '请运行项目根目录的启动服务脚本';
+}
+
+function createOfflineDiagnostic(error) {
+  return {
+    timestamp: new Date().toISOString(),
+    level: 'ERROR',
+    module: 'ext_popup',
+    message: '下载服务未启动或日志接口不可用',
+    context: {
+      api: `${API_BASE}/api/logs`,
+      error: error && error.message ? error.message : String(error || '连接失败'),
+      startup_hint: getServiceStartHint(),
+      startup_log: 'backend/logs/startup.log',
+    },
+    stack: error && error.stack ? String(error.stack).slice(0, 8000) : '',
+  };
+}
+
+/** 获取点击瞬间的日志快照；服务离线时降级复制扩展本地日志 */
+async function copyLatestLogs() {
+  if (!els.copyLogBtn || els.copyLogBtn.disabled) return;
+
+  els.copyLogBtn.disabled = true;
+  setLogButtonState('读取中', 'is-loading', '正在读取最新日志');
+
+  let logs = [];
+  let usingOfflineLogs = false;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+      const response = await fetch(`${API_BASE}/api/logs?limit=${LOG_COPY_LIMIT}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error(`日志接口请求失败 (${response.status})`);
+      }
+
+      const data = await response.json();
+      if (!data || data.success !== true || !Array.isArray(data.logs)) {
+        throw new Error('日志接口返回格式无效');
+      }
+      logs = data.logs;
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (serviceError) {
+    usingOfflineLogs = true;
+    const diagnostic = createOfflineDiagnostic(serviceError);
+    const localLogs = (Log && typeof Log.getLocalLogs === 'function')
+      ? await Log.getLocalLogs(LOG_COPY_LIMIT - 1)
+      : [];
+    logs = [diagnostic, ...localLogs].slice(0, LOG_COPY_LIMIT);
+
+    // 异步保存本次连接失败，供下次诊断使用；不阻塞当前复制。
+    if (Log && typeof Log.error === 'function') {
+      void Log.error('下载服务未启动或日志接口不可用', serviceError, {
+        api: `${API_BASE}/api/logs`,
+        startup_hint: getServiceStartHint(),
+      });
+    }
+  }
+
+  try {
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+      throw new Error('当前浏览器不支持剪贴板写入');
+    }
+
+    const logJson = JSON.stringify(logs, null, 2);
+    await navigator.clipboard.writeText(logJson);
+
+    if (usingOfflineLogs) {
+      setLogButtonState('已复制', 'is-offline', `服务未启动，已复制 ${logs.length} 条本地诊断日志`, 2000);
+    } else if (logs.length === 0) {
+      setLogButtonState('无日志', 'is-empty', '没有日志，已复制 []', 2000);
+    } else {
+      setLogButtonState('已复制', 'is-success', `已复制 ${logs.length} 条日志`, 2000);
+    }
+  } catch (clipboardError) {
+    console.error('复制日志失败:', clipboardError);
+    if (Log && typeof Log.error === 'function') {
+      void Log.error('剪贴板写入失败', clipboardError);
+    }
+    setLogButtonState('复制失败', 'is-error', clipboardError.message || '复制日志失败', 2000);
+  } finally {
+    els.copyLogBtn.disabled = false;
+  }
+}
+
 // ==================== 服务状态检查 ====================
 
 async function checkServerStatus() {
@@ -300,7 +436,7 @@ async function loadVideoInfo() {
   const serverOk = await checkServerStatus();
   if (!serverOk) {
     showOnly(els.errorBox);
-    els.errorText.textContent = '下载服务未启动，请在终端运行: python server.py';
+    els.errorText.textContent = `下载服务未启动，${getServiceStartHint()}`;
     els.downloadBtn.textContent = '未连接服务';
     els.downloadBtn.disabled = true;
     if (state.bvid) show(els.videoPanel);
@@ -361,7 +497,7 @@ async function loadVideoInfo() {
       try {
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          files: ['content.js'],
+          files: ['logger.js', 'content.js'],
         });
         // 等待 content script 初始化完成
         await new Promise(r => setTimeout(r, 800));
@@ -651,9 +787,9 @@ function renderQueueList() {
   els.queueList.innerHTML = '';
 
   // SVG 图标定义
-  const ICON_DOWNLOADING = `<svg class="spinner-sm" viewBox="0 0 24 24" fill="none" stroke="#FB7299" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`;
-  const ICON_COMPLETED   = `<svg viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>`;
-  const ICON_FAILED      = `<svg viewBox="0 0 24 24" fill="none" stroke="#FF4D4F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+  const ICON_DOWNLOADING = `<svg class="spinner-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`;
+  const ICON_COMPLETED   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>`;
+  const ICON_FAILED      = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
   const ICON_FOLDER      = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
 
   state.activeTasks.forEach((t, idx) => {
@@ -718,7 +854,7 @@ async function loadSavedPath() {
       els.downloadPathInput.value = data.downloadPath;
       els.savePathCheckbox.checked = true;
     } else {
-      els.downloadPathInput.placeholder = DEFAULT_DOWNLOAD_PATH;
+      els.downloadPathInput.placeholder = DEFAULT_DOWNLOAD_PATH_HINT;
       els.savePathCheckbox.checked = false;
     }
     // 如果之前存了路径但没勾选默认，也恢复路径到输入框（但不标记为默认）
@@ -727,7 +863,7 @@ async function loadSavedPath() {
       state.downloadPath = data.downloadPath;
     }
   } catch (e) {
-    els.downloadPathInput.placeholder = DEFAULT_DOWNLOAD_PATH;
+    els.downloadPathInput.placeholder = DEFAULT_DOWNLOAD_PATH_HINT;
   }
 }
 
@@ -914,6 +1050,9 @@ els.selectPathBtn.addEventListener('click', async () => {
   try {
     const resp = await fetch(`${API_BASE}/api/select-folder`);
     const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.detail || '打开文件夹选择器失败');
+    }
     if (data.success && data.path) {
       els.downloadPathInput.value = data.path;
       state.downloadPath = data.path;
@@ -934,7 +1073,7 @@ els.selectPathBtn.addEventListener('click', async () => {
 // 重置路径为默认
 els.resetPathBtn.addEventListener('click', () => {
   els.downloadPathInput.value = '';
-  els.downloadPathInput.placeholder = DEFAULT_DOWNLOAD_PATH;
+  els.downloadPathInput.placeholder = DEFAULT_DOWNLOAD_PATH_HINT;
   state.downloadPath = DEFAULT_DOWNLOAD_PATH;
   state.savePathDefault = false;
   els.savePathCheckbox.checked = false;
@@ -976,6 +1115,11 @@ if (els.queueBackBtn) {
   });
 }
 
+// 顶部日志复制按钮
+if (els.copyLogBtn) {
+  els.copyLogBtn.addEventListener('click', copyLatestLogs);
+}
+
 // ==================== 初始化 ====================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1003,52 +1147,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (funcMode) funcMode.addEventListener('click', () => document.getElementById('mode-section').scrollIntoView({ behavior: 'smooth' }));
   if (funcDanmaku) funcDanmaku.addEventListener('click', () => document.getElementById('danmaku-section').scrollIntoView({ behavior: 'smooth' }));
   if (funcPath) funcPath.addEventListener('click', () => els.downloadPathInput.focus());
-
-  // 日志按钮事件
-  const viewLogBtn = document.getElementById('view-log-btn');
-  const logCloseBtn = document.getElementById('log-close-btn');
-  const logModal = document.getElementById('log-modal');
-  const logBody = document.getElementById('log-body');
-  const clearLogBtn = document.getElementById('clear-log-btn');
-
-  if (viewLogBtn && logModal) {
-    viewLogBtn.addEventListener('click', async () => {
-      logModal.classList.remove('hidden');
-      logBody.innerHTML = '<div class="log-empty">加载中...</div>';
-      try {
-        const resp = await fetch('http://127.0.0.1:8765/api/logs?limit=50');
-        const data = await resp.json();
-        if (data.success && data.logs.length > 0) {
-          logBody.innerHTML = data.logs.map(entry => {
-            const level = (entry.level || 'info').toLowerCase();
-            const ts = entry.timestamp || '';
-            const msg = entry.message || '';
-            return `<div class="log-entry ${level}"><span class="log-ts">${ts}</span><span class="log-level ${level}">[${level.toUpperCase()}]</span>${msg}</div>`;
-          }).join('');
-        } else {
-          logBody.innerHTML = '<div class="log-empty">暂无日志记录</div>';
-        }
-      } catch (e) {
-        logBody.innerHTML = '<div class="log-empty">无法获取日志，请确认后端服务已启动</div>';
-      }
-    });
-
-    logCloseBtn.addEventListener('click', () => logModal.classList.add('hidden'));
-    logModal.addEventListener('click', (e) => {
-      if (e.target === logModal) logModal.classList.add('hidden');
-    });
-  }
-
-  if (clearLogBtn) {
-    clearLogBtn.addEventListener('click', async () => {
-      try {
-        await fetch('http://127.0.0.1:8765/api/logs/clear', { method: 'POST' });
-        alert('日志已清空');
-      } catch (e) {
-        alert('清空失败，请确认后端服务已启动');
-      }
-    });
-  }
 
   await loadSavedPath();
   await loadSavedMode();

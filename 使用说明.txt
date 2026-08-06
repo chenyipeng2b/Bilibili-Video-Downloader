@@ -3,16 +3,19 @@
 ========================================
 
 【前提】
-  - Windows 系统
+  - Windows 或 macOS 系统
   - Chrome / Edge 浏览器
   - Python 3.10+ (https://www.python.org/downloads/)
-    安装时务必勾选 "Add Python to PATH"
+    Windows 安装时务必勾选 "Add Python to PATH"
 
 
 【三步安装】
 
- 第1步: 双击 "启动服务.bat"
-         - 首次会自动安装依赖，之后直接启动
+ 第1步: 启动本地下载服务
+         - Windows: 双击 "启动服务.bat"
+         - macOS:  双击 "启动服务.command"
+           如果系统拦截，请右键文件并选择一次“打开”
+         - 首次会创建 .venv，并自动下载依赖和 FFmpeg
          - 看到 http://127.0.0.1:8765 即成功
          - 窗口不要关！
 
@@ -41,11 +44,18 @@
   画质
     全部 12 种画质展示，登录后可解锁更高画质
 
+  日志复制
+    点击扩展弹窗顶部的 [LOG] 按钮
+    会将扩展端和后端最新 500 条日志以 JSON 格式复制到剪贴板
+    日志按时间从新到旧排列
+    服务未启动时会自动复制扩展本地保存的诊断日志
+
 
 【常见问题】
 
   Q: 扩展显示"下载服务未启动"
-  A: 双击 "启动服务.bat"，看到 8765 端口即成功
+  A: Windows 运行 "启动服务.bat"，macOS 运行 "启动服务.command"
+     保持服务窗口开启，看到 8765 端口即成功
 
   Q: 高画质(4K/1080P60)显示锁图标
   A: 需要登录 B站，扩展会自动读取你的登录态
@@ -53,11 +63,15 @@
   Q: 下载的 MKV 没弹幕
   A: 右键 -> 字幕 -> 启用字幕轨道，或用硬烧录模式
 
+  Q: LOG 按钮显示“复制失败”
+  A: 现在只有剪贴板写入失败才会显示该状态
+     服务离线诊断会自动复制；启动详情见 backend/logs/startup.log
+
 
 【分享给朋友】
 
-  把整个文件夹压缩成 zip 发过去，对方解压后：
-  1. 双击 "启动服务.bat" (会自动装依赖)
+  分享时不要包含自动生成的 .venv 文件夹。对方解压后：
+  1. 运行对应系统的启动文件（会自动安装依赖和 FFmpeg）
   2. 浏览器加载 extension 文件夹
   3. 打开 B站视频页就能用
 
@@ -72,16 +86,19 @@
 ========================================
 
 【Prerequisites】
-  - Windows OS
+  - Windows or macOS
   - Chrome / Edge browser
   - Python 3.10+ (https://www.python.org/downloads/)
-    Check "Add Python to PATH" during installation
+    Windows: check "Add Python to PATH" during installation
 
 
 【3-Step Setup】
 
- Step 1: Double-click "启动服务.bat"
-         - Dependencies auto-install on first run
+ Step 1: Start the local service
+         - Windows: double-click "启动服务.bat"
+         - macOS:  double-click "启动服务.command"
+           If macOS blocks it, right-click the file and choose Open once
+         - First run creates .venv and downloads dependencies + FFmpeg
          - Keep the window open (service on port 8765)
 
  Step 2: Load the browser extension
@@ -109,11 +126,18 @@
   Quality
     All 12 quality tiers displayed, login to unlock higher qualities
 
+  Log Copy
+    Click the [LOG] button at the top of the extension popup
+    Copies the latest 500 extension and backend log entries as JSON
+    Entries are ordered from newest to oldest
+    If the service is offline, local extension diagnostics are copied instead
+
 
 【FAQ】
 
   Q: Extension shows "Service not started"
-  A: Double-click "启动服务.bat", wait for port 8765
+  A: Run "启动服务.bat" (Windows) or "启动服务.command" (macOS)
+     Keep the service window open and wait for port 8765
 
   Q: Higher qualities (4K/1080P60) show lock icon
   A: Log in to Bilibili first, extension reads your login cookie
@@ -121,10 +145,14 @@
   Q: Downloaded MKV has no danmaku
   A: Right-click -> Subtitles -> Enable track, or use Hard Burn mode
 
+  Q: The LOG button shows "Copy failed"
+  A: This now only means clipboard access failed. Service-offline diagnostics
+     are copied automatically. Startup details: backend/logs/startup.log
+
 
 【Share with Friends】
 
-  Zip the entire folder and send. They just need to:
-  1. Double-click "启动服务.bat" (auto-installs dependencies)
+  Do not include the generated .venv folder when sharing. The recipient should:
+  1. Run the startup file for their system (auto-installs dependencies + FFmpeg)
   2. Load the "extension" folder in browser
   3. Open any Bilibili video page

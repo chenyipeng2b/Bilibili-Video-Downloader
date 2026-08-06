@@ -71,10 +71,10 @@ class JsonFormatter(logging.Formatter):
             entry["traceback"] = "".join(traceback.format_tb(record.exc_info[2]))
 
         # 添加自定义上下文字段（如果通过 extra 传入）
-        for key in ("context", "bvid", "cid", "quality", "task_id", "url"):
+        for key in ("context", "bvid", "cid", "quality", "task_id", "url", "stack"):
             if hasattr(record, key):
                 val = getattr(record, key, None)
-                if val is not None:
+                if val is not None and (key != "stack" or val):
                     entry[key] = val
 
         return json.dumps(entry, ensure_ascii=False)
@@ -223,28 +223,27 @@ def read_logs(
     Returns:
         日志条目列表（JSON 格式）
     """
+    if limit <= 0 or not LOG_DIR.exists():
+        return []
+
+    # 同时读取当前日志和按天轮转后的日志，再做全局时间排序。
+    # 每个文件最多读取 limit 条即可：全局前 limit 条不可能需要某个文件
+    # 中排名在 limit 之后的记录。
+    log_files = set(LOG_DIR.glob("*.json.log"))
+    log_files.update(LOG_DIR.glob("*.json.log.*"))
+
+    if module:
+        module_prefix = f"{module}.json.log"
+        log_files = {
+            path for path in log_files
+            if path.name == module_prefix or path.name.startswith(f"{module_prefix}.")
+        }
+
     results = []
-    target_file = None
+    for filepath in log_files:
+        results.extend(_parse_json_log(filepath, date, level, limit))
 
-    if module and date:
-        target_file = LOG_DIR / f"{module}.json.log"
-    elif module:
-        target_file = LOG_DIR / f"{module}.json.log"
-    elif date:
-        target_file = LOG_DIR / f"server.json.log"  # 默认读 server
-
-    # 如果指定了具体文件，读取它
-    if target_file and target_file.exists():
-        entries = _parse_json_log(target_file, date, level, limit)
-        results.extend(entries)
-    else:
-        # 遍历所有 JSON 日志文件
-        for f in sorted(LOG_DIR.glob("*.json.log"), reverse=True):
-            if len(results) >= limit:
-                break
-            entries = _parse_json_log(f, date, level, limit - len(results))
-            results.extend(entries)
-
+    results.sort(key=lambda entry: entry.get("timestamp", ""), reverse=True)
     return results[:limit]
 
 

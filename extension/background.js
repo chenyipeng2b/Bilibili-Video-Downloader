@@ -17,13 +17,22 @@ let cachedQualities = null;
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'videoInfo') {
     cachedVideoInfo = msg.data;
-    // 同步存储给 popup
-    chrome.storage.local.set({ videoInfo: msg.data });
+    // 存储完成后明确回复 content script，避免消息端口关闭警告。
+    chrome.storage.local.set({ videoInfo: msg.data })
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => {
+        void Log.error('缓存视频信息失败', error, { bvid: msg.data && msg.data.bvid });
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
   }
 
   if (msg.action === 'getCachedInfo') {
     sendResponse(cachedVideoInfo);
+    return false;
   }
+
+  return false;
 });
 
 // 与后端通信：获取视频信息和画质列表（支持指定 cid 查询不同分P画质）

@@ -1,5 +1,8 @@
+.DS_Store
+.venv/
 downloads/
 logs/
+backend/logs/
 __pycache__/
 *.pyc
 *.m4s

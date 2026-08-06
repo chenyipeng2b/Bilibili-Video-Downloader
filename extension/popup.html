@@ -8,21 +8,23 @@
 </head>
 <body>
   <div class="container">
-    <!-- 头部 - B站蓝色 -->
+    <!-- 头部 - Bilibili 桌面站风格 -->
     <div class="header">
       <div class="header-left">
-        <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <polyline points="8 21 12 17 16 21"/>
+        <svg class="header-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 7 7 3M22 7l3-4"/>
+          <rect x="3" y="7" width="26" height="21" rx="6"/>
+          <path d="M10 17h2M20 17h2"/>
         </svg>
         <span class="logo">B站视频下载</span>
       </div>
       <div class="header-right">
+        <button id="copy-log-btn" class="log-copy-btn" type="button" title="复制最新 500 条日志" aria-label="复制最新 500 条日志">LOG</button>
         <button id="theme-toggle" class="theme-toggle" title="切换主题">
-          <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
-          <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
         </button>
@@ -35,8 +37,8 @@
 
       <!-- 非视频页面 -->
       <div id="not-video-page" class="state-box hidden">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#C9CCD0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+        <svg width="56" height="56" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 7 7 3M22 7l3-4"/><rect x="3" y="7" width="26" height="21" rx="6"/><path d="M10 17h2M20 17h2"/>
         </svg>
         <div class="state-text">请打开一个 B站视频页面</div>
         <div class="state-sub">支持 bilibili.com/video/ 链接</div>
@@ -51,7 +53,7 @@
 
       <!-- 错误提示 -->
       <div id="error-box" class="state-box hidden">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#FF4D4F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
         </svg>
         <div class="state-text" id="error-text">出错了</div>
@@ -61,7 +63,7 @@
       <!-- 视频信息面板 (Tab 1) -->
       <div id="video-panel" class="hidden">
 
-        <!-- 视频卡片 - B站移动端大封面布局 -->
+        <!-- 视频卡片 - Bilibili 桌面站内容卡片风格 -->
         <div class="video-card">
           <div class="video-cover-wrapper">
             <img id="video-cover" src="" alt="封面" class="video-cover" onerror="this.style.display='none'">
@@ -71,7 +73,7 @@
           <div class="video-info">
             <div class="video-title" id="video-title">-</div>
             <div class="video-meta-row">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#9499A0" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
               <span id="video-duration-text">-</span>
             </div>
           </div>
@@ -81,31 +83,31 @@
         <div class="function-grid">
           <div class="func-item" id="func-quality">
             <div class="func-icon orange">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#FF8C42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="15" rx="3"/><path d="m10 9 5 3-5 3V9Z"/>
               </svg>
             </div>
             <span class="func-label">画质</span>
           </div>
           <div class="func-item" id="func-mode">
             <div class="func-icon blue">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#00AEEC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>
               </svg>
             </div>
             <span class="func-label">模式</span>
           </div>
           <div class="func-item" id="func-danmaku">
             <div class="func-icon green">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#52C41A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="15" rx="3"/><path d="M6 9h7M15 9h3M6 14h3M11 14h7"/>
               </svg>
             </div>
             <span class="func-label">弹幕</span>
           </div>
           <div class="func-item" id="func-path">
             <div class="func-icon pink">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#FB7299" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
               </svg>
             </div>
@@ -165,7 +167,7 @@
         <div class="section">
           <label class="section-label">保存路径</label>
           <div class="path-input-wrapper">
-            <input type="text" id="download-path-input" class="path-input" placeholder="G:\bilibili-downloader\downloads\">
+            <input type="text" id="download-path-input" class="path-input" placeholder="留空使用项目 downloads 文件夹">
             <button id="select-path-btn" class="btn-icon" title="选择文件夹">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             </button>
@@ -221,24 +223,8 @@
           <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">点击头部太阳/月亮图标切换，长按锁定</p>
         </div>
         <div class="section">
-          <label class="section-label">日志查看</label>
-          <button id="view-log-btn" class="btn btn-secondary" style="margin-bottom:6px;">查看最近日志</button>
-          <button id="clear-log-btn" class="btn btn-secondary" style="font-size:11px;padding:8px;">清空日志文件</button>
-        </div>
-        <div class="section">
           <label class="section-label">关于</label>
           <p style="font-size:12px;color:var(--text-secondary);">B站视频下载助手 v1.0<br>支持 8K / 4K / 1080P 等画质<br>支持弹幕下载与封装</p>
-        </div>
-      </div>
-
-      <!-- 日志弹窗 -->
-      <div id="log-modal" class="log-modal hidden">
-        <div class="log-modal-content">
-          <div class="log-modal-header">
-            <span class="log-modal-title">日志记录</span>
-            <button id="log-close-btn" class="log-close-btn">&times;</button>
-          </div>
-          <div id="log-body" class="log-body">加载中...</div>
         </div>
       </div>
     </div>
@@ -247,19 +233,19 @@
     <div class="bottom-tabs" id="bottom-tabs">
       <button class="tab-item active" data-tab="video">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+          <rect x="2" y="4" width="20" height="16" rx="4"/><path d="m10 9 5 3-5 3V9Z"/>
         </svg>
         <span>视频</span>
       </button>
       <button class="tab-item" data-tab="queue">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          <path d="M9 6h11M9 12h11M9 18h7"/><path d="m3.5 6 1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/>
         </svg>
         <span>队列</span>
       </button>
       <button class="tab-item" data-tab="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          <path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>
         </svg>
         <span>设置</span>
       </button>
